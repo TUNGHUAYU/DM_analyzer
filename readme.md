@@ -4,6 +4,8 @@ Author: Terry Yu
 
 Brief: Analyze RDK-B Data Model (DM) based on each component
 
+Github: https://github.com/TUNGHUAYU/DM_analyzer.git
+
 
 
 [toc]
