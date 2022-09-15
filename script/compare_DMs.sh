@@ -1,10 +1,10 @@
 #!/bin/bash
 
-
 # <<< function definition >>>
 
 # $1: path_CA_DM_Component_csv
 # $2: path_CA_DM_Component_csv
+# $3: path_OUT_DIR
 #
 # CA:= ConditionA
 # CB:= ConditionB
@@ -14,10 +14,11 @@ function compare(){
 
     local path_CA_DM_component_csv=$1
     local path_CB_DM_component_csv=$2
+    local path_OUT_DIR=$3
 
-    
+    # awk process for comparison
     awk \
-    --assign OUT_DIR=${path_OUT_folder} \
+    --assign OUT_DIR=${path_OUT_DIR} \
     '
     function get_file_name(file_path){
         
@@ -128,7 +129,33 @@ function compare(){
 
 }
 
+#
+# brief: list component difference between two DMs
 
+function list_component(){
+
+    # header
+    printf "%s,%s,%s\n" "name" ${CA} ${CB}
+
+    #
+    for component in ${union_DM_component_arr[@]}
+    do
+
+        printf "%s," ${component}
+
+        if [[ "${CA_DM_component_list[*]}" =~ "${component}" ]]; then
+            printf "%s," "V"
+        fi
+
+        if [[ "${CB_DM_component_list[*]}" =~ "${component}" ]]; then
+            printf "%s," "V"
+        fi
+
+        printf "\n"
+
+    done
+
+}
 
 # <<< main >>>
 # usage message
@@ -148,13 +175,13 @@ fi
 # assign variable value
 path_CA_DM_DIR=$1
 path_CB_DM_DIR=$2
-path_OUT_folder="$(pwd)/DM_comparison"
 
-# display variable value
-echo "path_DM_csv1 = ${path_CA_DM_DIR}"
-echo "path_DM_csv2 = ${path_CB_DM_DIR}"
+# get the condition of two DMs
+CA=$( echo ${path_CA_DM_DIR} | awk -F"/" '{print $(NF-1)}' )
+CB=$( echo ${path_CB_DM_DIR} | awk -F"/" '{print $(NF-1)}' )
 
 # create output folder 
+path_OUT_folder="$(pwd)/DM_comparison/${CA}_${CB}"
 if [[ -d ${path_OUT_folder} ]];then
     read -p "Overwrite ${path_OUT_folder}? (y/n) "
     if [[ ${REPLY} == "y" ]]; then
@@ -162,25 +189,66 @@ if [[ -d ${path_OUT_folder} ]];then
     fi
 fi
 
-mkdir ${path_OUT_folder}
+mkdir -p ${path_OUT_folder}
 
-# check two DM folder have the same number of components
-num_CA_component=$(ls -l ${path_CA_DM_DIR} | wc -l)
-num_CB_component=$(ls -l ${path_CB_DM_DIR} | wc -l)
 
-if [[ ${num_CA_component} != ${num_CB_component} ]]; then
-    echo "number of Condition A component: ${num_CA_component}"
-    echo "number of Condition B component: ${num_CB_component}"
-    echo "Error: DMs do NOT have the same number of component"
-    exit 2
+# get csv file and assign in array
+CA_DM_component_list=($(find ${path_CA_DM_DIR} -name "*.csv" -type f))
+CB_DM_component_list=($(find ${path_CB_DM_DIR} -name "*.csv" -type f))
+
+# comm
+comm_DM_component_arr=\
+($(
+    comm -12 \
+    <(printf '%s\n' "${CA_DM_component_list[@]##*/}" | sort) \
+    <(printf '%s\n' "${CB_DM_component_list[@]##*/}" | sort)
+))
+
+# A-B
+comp_A_DM_component_arr=\
+($(
+    comm -13 \
+    <(printf '%s\n' "${CA_DM_component_list[@]##*/}" | sort) \
+    <(printf '%s\n' "${CB_DM_component_list[@]##*/}" | sort)
+))
+
+# B-A
+comp_B_DM_component_arr=\
+($(
+    comm -23 \
+    <(printf '%s\n' "${CA_DM_component_list[@]##*/}" | sort) \
+    <(printf '%s\n' "${CB_DM_component_list[@]##*/}" | sort)
+))
+
+# A and B union
+union_DM_component_arr+=(${comm_DM_component_arr[@]})
+union_DM_component_arr+=(${comp_A_DM_component_arr[@]})
+union_DM_component_arr+=(${comp_B_DM_component_arr[@]})
+
+# produce the component list of two DMs
+path_list_file="${path_OUT_folder}/component_list.csv"
+{
+list_component 
+} > ${path_list_file}
+
+#
+path_OUT_folder="${path_OUT_folder}/commom"
+if [[ -d ${path_OUT_folder} ]];then
+    read -p "Overwrite ${path_OUT_folder}? (y/n) "
+    if [[ ${REPLY} == "y" ]]; then
+        rm ${path_OUT_folder} -rf
+    fi
 fi
 
+mkdir -p ${path_OUT_folder}
 
-for file_path in ${path_CA_DM_DIR}/*.csv
+
+for file_name in ${comm_DM_component_arr[@]}
 do
-    filename=$(basename ${file_path})
-    path_CA_DM_csv="${path_CA_DM_DIR}/${filename}"
-    path_CB_DM_csv="${path_CB_DM_DIR}/${filename}"
+
+    path_CA_DM_csv="${path_CA_DM_DIR}/${file_name}"
+    path_CB_DM_csv="${path_CB_DM_DIR}/${file_name}"
+
     echo "compare ${path_CA_DM_csv} ${path_CB_DM_csv}"
-    compare ${path_CA_DM_csv} ${path_CB_DM_csv}
+    compare ${path_CA_DM_csv} ${path_CB_DM_csv} ${path_OUT_folder}
 done
