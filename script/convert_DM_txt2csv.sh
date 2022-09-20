@@ -29,9 +29,12 @@ fi
 
 mkdir ${path_OUT_folder}
 
-#
-awk \
---assign OUT_DIR=${path_OUT_folder} \
+
+
+# cut ANSI header and parsing
+cat ${path_DM_dump_file} | \
+sed -r "s/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g" | \
+awk --assign OUT_DIR=${path_OUT_folder} \
 '
 # create a dictionary structure "info"
 # the layout of "info" shown below
@@ -68,8 +71,8 @@ $0 ~ "Parameter"{
     nbr_of_var  = $2
     var_name    = $4
 
-    #print "nbr_of_var: " nbr_of_var
-    #print "var_name: " var_name
+    # print "nbr_of_var: " nbr_of_var
+    # print "var_name: " var_name
 
     info[component][nbr_of_var]["name"] = var_name
 }
@@ -89,8 +92,8 @@ $0 ~ "type:"{
     # remove , from var_type
     gsub(/,/,"",var_type)
 
-    #print "var_type: " var_type
-    #print "var_value: " var_value
+    # print "var_type: " var_type
+    # print "var_value: " var_value
 
     info[component][nbr_of_var]["type"] = var_type
     info[component][nbr_of_var]["value"] = var_value
@@ -145,5 +148,4 @@ END{
     }
 
 }
-' ${path_DM_dump_file}
-
+' 
