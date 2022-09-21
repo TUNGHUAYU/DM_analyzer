@@ -2,6 +2,47 @@
 
 # <<< function definition >>>
 
+##
+# path: A/B/C/experiment_20220906/fw_MKT_0906/.../connecting/DM_component_CSVs
+#
+# output: "<exp_date> <fw_version> <condition>"
+#
+function get_info(){
+
+    local file_path=$1
+   
+    echo "${file_path}" | \
+    awk \
+    '
+    BEGIN{
+        FS="/"
+    }
+    {
+        N = split($0, file_path_array, "/")
+
+        # condition
+        condition = file_path_array[N-1]
+
+        # search fw_version and exp_date
+        for ( i=1; i<=N; i++ ){
+            
+            # fw version
+            if ( match(file_path_array[i], /fw_*/) ){
+                fw_version = file_path_array[i]
+            }
+
+            # exp_date
+            if ( match(file_path_array[i], /experiment_*/) ){
+                exp_date = file_path_array[i]
+            }
+        }
+
+        # display
+        printf("%s %s %s", exp_date, fw_version, condition)
+    }
+    '
+}
+
 # $1: path_CA_DM_Component_csv
 # $2: path_CA_DM_Component_csv
 # $3: path_OUT_DIR
@@ -21,17 +62,35 @@ function compare(){
     --assign OUT_DIR=${path_OUT_DIR} \
     '
     function get_file_name(file_path){
-        
-        n = split(file_path, file_path_array, "/")
-        
-        return file_path_array[n]
+        N = split(file_path, file_path_array, "/")
+        return file_path_array[N]
     }
 
     function get_file_condition(file_path){
-        
-        n = split(file_path, file_path_array, "/")
+        N = split(file_path, file_path_array, "/")
+        return file_path_array[N-2]
+    }
 
-        return file_path_array[n-2]
+    function get_file_fw_version(file_path){
+        N = split(file_path, file_path_array, "/")
+        for ( i=1; i<=N; i++ ){
+            if ( match(file_path_array[i], /fw_*/) ){
+                n = i
+                break
+            }
+        }
+        return file_path_array[n]
+    }
+
+    function get_file_exp_date(file_path){
+        N = split(file_path, file_path_array, "/")
+        for ( i=1; i<=N; i++ ){
+            if ( match(file_path_array[i], /experiment_.*/) ){
+                n = i
+                break
+            }
+        }
+        return file_path_array[n]
     }
 
     ## 
@@ -51,6 +110,10 @@ function compare(){
         fileB_info["filename"] = get_file_name(ARGV[2])
         fileA_info["condition"] = get_file_condition(ARGV[1])
         fileB_info["condition"] = get_file_condition(ARGV[2])
+        fileA_info["fw_version"] = get_file_fw_version(ARGV[1])
+        fileB_info["fw_version"] = get_file_fw_version(ARGV[2])
+        fileA_info["exp_date"] = get_file_exp_date(ARGV[1])
+        fileB_info["exp_date"] = get_file_exp_date(ARGV[2])
         
         if ( fileA_info["filename"] != fileB_info["filename"] ){
             exit 1
@@ -118,8 +181,10 @@ function compare(){
         # header
         for ( i=1; i<=max_nbr_field; i++ ){
             printf("%s%d,", "arg_field", i)                             > out_csv_path 
-        } 
-        printf("%s,%s,%s\n", "type", fileA_info["condition"], fileB_info["condition"])      >> out_csv_path 
+        }
+        fileA_header = sprintf("%s-%s-%s", fileA_info["exp_date"], fileA_info["fw_version"], fileA_info["condition"])
+        fileB_header = sprintf("%s-%s-%s", fileB_info["exp_date"], fileB_info["fw_version"], fileB_info["condition"])
+        printf("%s,%s,%s\n", "type", fileA_header, fileB_header)      >> out_csv_path 
        
         # content
         for ( argument in info ){
@@ -141,7 +206,7 @@ function compare(){
 function list_component(){
 
     # header
-    printf "%s,%s,%s\n" "name" ${CA} ${CB}
+    printf "%s,%s,%s\n" "name" ${A_condition} ${B_condition}
 
     #
     for component in ${union_DM_component_arr[@]}
@@ -182,12 +247,21 @@ fi
 path_CA_DM_DIR=$1
 path_CB_DM_DIR=$2
 
-# get the condition of two DMs
-CA=$( echo ${path_CA_DM_DIR} | awk -F"/" '{print $(NF-1)}' )
-CB=$( echo ${path_CB_DM_DIR} | awk -F"/" '{print $(NF-1)}' )
+
+# get the exp_date, fw_version, and condition 
+fileA_info=($( get_info ${path_CA_DM_DIR} ))
+A_exp_date=${fileA_info[0]}
+A_fw_version=${fileA_info[1]}
+A_condition=${fileA_info[2]}
+
+fileB_info=($( get_info ${path_CB_DM_DIR} ))
+B_exp_date=${fileB_info[0]}
+B_fw_version=${fileB_info[1]}
+B_condition=${fileB_info[2]}
+
 
 # create output folder 
-path_OUT_folder="$(pwd)/DM_comparison/${CA}_${CB}"
+path_OUT_folder="$(pwd)/DM_comparison/${A_fw_version}-${A_condition}_vs_${B_fw_version}-${B_condition}"
 if [[ -d ${path_OUT_folder} ]];then
     read -p "Overwrite ${path_OUT_folder}? (y/n) "
     if [[ ${REPLY} == "y" ]]; then
@@ -237,7 +311,7 @@ path_list_file="${path_OUT_folder}/component_list.csv"
 list_component 
 } > ${path_list_file}
 
-#
+# create commom folder
 path_OUT_folder="${path_OUT_folder}/commom"
 if [[ -d ${path_OUT_folder} ]];then
     read -p "Overwrite ${path_OUT_folder}? (y/n) "
@@ -249,6 +323,7 @@ fi
 mkdir -p ${path_OUT_folder}
 
 
+# compare process
 for file_name in ${comm_DM_component_arr[@]}
 do
 
