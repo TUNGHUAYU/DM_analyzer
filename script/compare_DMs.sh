@@ -71,6 +71,7 @@ function compare(){
         # assign type and value to info array
         info[argument]["type"] = type
         info[argument]["file1_value"] = value
+        info[argument]["file2_value"] = "<none>"
     
         # find max number of field of argument
         split(argument, a, ".")
@@ -82,7 +83,7 @@ function compare(){
         next 
     }
     
-    # parse first file and ignore first row
+    # parse second file and ignore first row
     ARGIND == 2 && FNR != 1 { 
         
         # get argument, type, and value from second file
@@ -92,7 +93,12 @@ function compare(){
     
         # assign type and value to info array
         info[argument]["type"] = type
-        info[argument]["file2_value"] = value
+        if ( "file1_value" in info[argument] ){
+            info[argument]["file2_value"] = value
+        } else {
+            info[argument]["file1_value"] = "<none>"
+            info[argument]["file2_value"] = value
+        } 
     
         # find max number of field of argument
         split(argument, a, ".")
