@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#
+# display usage
 function HELP(){
     echo "usage: $(basename $0) <PATH DM txt>"
     echo "DM: Data Model"
