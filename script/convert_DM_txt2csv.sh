@@ -75,6 +75,12 @@ $0 ~ "Parameter"{
     # print "var_name: " var_name
 
     info[component][nbr_of_var]["name"] = var_name
+	
+	# calculate the maximum number of field in all "var_name"
+	len = split( var_name, a, "." )
+	if ( len > max_nbr_field ){
+		max_nbr_field = len
+	}
 }
 
 # parse second line of variable ( including type and value )
@@ -120,30 +126,49 @@ function extract_component_last_field(component){
 
 END{
 
+	# output
+	# example ( wifi.csv content )
+	# No.,arg_field1,arg_field2,arg_field3,arg_field4,arg_field5,arg_field6,arg_field7,arg_field8,arg_field9,arg_field10,type,value
+	# 1,Device,WiFi,RadioNumberOfEntries,,,,,,,,uint,"2",
+	# 2,Device,WiFi,SSIDNumberOfEntries,,,,,,,,uint,"16",
+	# ... and so on ...
+	# 48,Device,WiFi,Radio,1,OperatingStandards,,,,,,string,"a,n,ac,ax",
+	
     for( component in info ){
 
         # extract component
         comp = extract_component_last_field(component)
         
-
         # assign value to variable "csv_path"
         csv_path = OUT_DIR "/" comp ".csv"    
         
         # display header
-        printf("%s,%s,%s,%s\n", "No.", "name", "type", "value")     > csv_path 
-        
+        # printf("%s,%s,%s,%s\n", "No.", "name", "type", "value")		> csv_path 
+		printf("%s,", "No.")     										> csv_path 
+		for ( i=1; i<=max_nbr_field; i++ ){
+            printf("%s%d,", "arg_field", i)								> csv_path
+        }
+		printf("%s,%s\n", "type", "value")     							> csv_path 
+		
+		     
         for( nbr_of_var in info[component] ){
             
             # display component and nbr_of_var value
-            printf("%s,", nbr_of_var)                               >> csv_path
+            printf("%s,", nbr_of_var)                               	>> csv_path
 
-            # display name, type, and value value
-            printf("%s,", info[component][nbr_of_var]["name"])      >> csv_path
-            printf("%s,", info[component][nbr_of_var]["type"])      >> csv_path
-            printf("%s,", info[component][nbr_of_var]["value"])     >> csv_path
+            # display name
+			split( info[component][nbr_of_var]["name"], name_array, "." );
+			for ( i=1; i<=max_nbr_field; i++ ){
+				printf("%s,", name_array[i])      						>> csv_path
+			}
+			
+			# display type and value
+			# value need be quoted by "%s" format
+            printf("%s,", info[component][nbr_of_var]["type"])      	>> csv_path
+            printf("\"%s\",", info[component][nbr_of_var]["value"])     >> csv_path
 
             # newline
-            printf("\n")                                            >> csv_path
+            printf("\n")                                            	>> csv_path
         }
     }
 
