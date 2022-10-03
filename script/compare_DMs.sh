@@ -121,82 +121,131 @@ function compare(){
 
         # 
         max_nbr_field = 0
+		max_nbr_field_file1 = 0
+		max_nbr_field_file2 = 0
     }
-    
+	
+	# get the maximun number of field in first file
+	# example ( wifi.csv header )
+	# No.,arg_field1,arg_field2,arg_field3,arg_field4,arg_field5,arg_field6,arg_field7,arg_field8,arg_field9,arg_field10,type,value
+	
+	ARGIND == 1 && FNR == 1 { 
+		max_nbr_field_file1 = NF
+		next
+	}
+	
     # parse first file and ignore first row
+	# example ( wifi.csv content )
+	# 48,Device,WiFi,Radio,1,OperatingStandards,,,,,,string,"a,n,ac,ax",
+	
     ARGIND == 1 && FNR != 1 { 
     
-        # get argument, type, and value from first file
-        argument = $2
-        type     = $3
-        value    = $4
-        
-        # assign type and value to info array
-        info[argument]["type"] = type
-        info[argument]["file1_value"] = value
-        info[argument]["file2_value"] = "<none>"
-    
-        # find max number of field of argument
-        split(argument, a, ".")
-        len = length(a)
-        if ( len > max_nbr_field ){
-            max_nbr_field = len
-        }
-    
-        next 
+		# get "argument" from first file
+		# compose argument with string format
+		for( i=2; i<=max_nbr_field_file1 - 2; i++ ){
+			if ( i == 2 ){
+				argument=$2
+			} else {
+				if ( $i ){
+					argument = sprintf("%s.%s", argument, $i)
+				}
+			}
+		}
+
+		# get "type" from first file
+		type     = $(max_nbr_field_file1 - 1)
+		
+		# get "value" from first file
+		split($0, a, "\"")
+		value    = a[2]
+		
+
+		# assign type and value to info array
+		info[argument]["type"] = type
+		info[argument]["file1_value"] = value
+		info[argument]["file2_value"] = "<none>"
+
+		next 
     }
+	
+	# get the maximun number of field in second file
+	# example ( wifi.csv header )
+	# No.,arg_field1,arg_field2,arg_field3,arg_field4,arg_field5,arg_field6,arg_field7,arg_field8,arg_field9,arg_field10,type,value
+	
+	ARGIND == 2 && FNR == 1 { 
+	
+		max_nbr_field_file2 = NF
+		
+		if (max_nbr_field_file1 >= max_nbr_field_file2){
+			max_nbr_field = max_nbr_field_file1
+		} else {
+			max_nbr_field = max_nbr_field_file2
+		}
+		
+		next
+	}
     
-    # parse second file and ignore first row
-    ARGIND == 2 && FNR != 1 { 
-        
-        # get argument, type, and value from second file
-        argument = $2
-        type     = $3
-        value    = $4
+	# parse second file and ignore first row
+	# example ( wifi.csv content )
+	# 48,Device,WiFi,Radio,1,OperatingStandards,,,,,,string,"a,n,ac,ax",
+	
+	ARGIND == 2 && FNR != 1 { 
+	   
+		# get "argument" from second file
+		# compose argument with string format
+		for( i=2; i<=max_nbr_field_file1 - 2; i++ ){
+			if ( i == 2 ){
+				argument=$2
+			} else {
+				if ( $i ){
+					argument = sprintf("%s.%s", argument, $i)
+				}
+			}
+		}
+
+		# get "type" from second file
+		type     = $(max_nbr_field_file1 - 1)
+		
+		# get "value" from second file
+		split($0, a, "\"")
+		value    = a[2]
+
+		# assign type and value to info array
+		info[argument]["type"] = type
+		if ( "file1_value" in info[argument] ){
+		   info[argument]["file2_value"] = value
+		} else {
+		   info[argument]["file1_value"] = "<none>"
+		   info[argument]["file2_value"] = value
+		} 
+
+		next 
+	}
     
-        # assign type and value to info array
-        info[argument]["type"] = type
-        if ( "file1_value" in info[argument] ){
-            info[argument]["file2_value"] = value
-        } else {
-            info[argument]["file1_value"] = "<none>"
-            info[argument]["file2_value"] = value
-        } 
-    
-        # find max number of field of argument
-        split(argument, a, ".")
-        len = length(a)
-        if ( len > max_nbr_field ){
-            max_nbr_field = len
-        }
-    
-        next 
-    }
-    
-    # output format content
-    END{
-        
-        out_csv_path = sprintf("%s/%s", OUT_DIR, fileA_info["filename"])
-    
-        # header
-        for ( i=1; i<=max_nbr_field; i++ ){
-            printf("%s%d,", "arg_field", i)                             > out_csv_path 
-        }
-        fileA_header = sprintf("%s-%s-%s", fileA_info["exp_date"], fileA_info["fw_version"], fileA_info["condition"])
-        fileB_header = sprintf("%s-%s-%s", fileB_info["exp_date"], fileB_info["fw_version"], fileB_info["condition"])
-        printf("%s,%s,%s\n", "type", fileA_header, fileB_header)      >> out_csv_path 
-       
-        # content
-        for ( argument in info ){
-            split(argument, argument_array, ".")
-            for( i=1; i<=max_nbr_field; i++ ){
-                printf("%s,", argument_array[i])                        >> out_csv_path
-            }
-            printf("%s,%s,%s\n", info[argument]["type"], info[argument]["file1_value"], info[argument]["file2_value"]) >> out_csv_path
-        }
-    
-    }
-    ' ${path_CA_DM_component_csv} ${path_CB_DM_component_csv}
+	# output format content
+	END{
+	   
+	   out_csv_path = sprintf("%s/%s", OUT_DIR, fileA_info["filename"])
+
+	   # header
+	   for ( i=1; i<=max_nbr_field; i++ ){
+		   printf("%s%d,", "arg_field", i)                             > out_csv_path 
+	   }
+	   fileA_header = sprintf("%s-%s-%s", fileA_info["exp_date"], fileA_info["fw_version"], fileA_info["condition"])
+	   fileB_header = sprintf("%s-%s-%s", fileB_info["exp_date"], fileB_info["fw_version"], fileB_info["condition"])
+	   printf("%s,%s,%s\n", "type", fileA_header, fileB_header)      >> out_csv_path 
+	  
+	   # content
+	   for ( argument in info ){
+		   split(argument, argument_array, ".")
+		   for( i=1; i<=max_nbr_field; i++ ){
+			   printf("%s,", argument_array[i])                        >> out_csv_path
+		   }
+		   printf("%s,%s,%s\n", info[argument]["type"], info[argument]["file1_value"], info[argument]["file2_value"]) >> out_csv_path
+	   }
+
+	}
+' ${path_CA_DM_component_csv} ${path_CB_DM_component_csv}
 
 }
 
