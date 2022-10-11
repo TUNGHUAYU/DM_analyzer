@@ -241,7 +241,7 @@ function compare(){
 		   for( i=1; i<=max_nbr_field; i++ ){
 			   printf("%s,", argument_array[i])                        >> out_csv_path
 		   }
-		   printf("%s,%s,%s\n", info[argument]["type"], info[argument]["file1_value"], info[argument]["file2_value"]) >> out_csv_path
+		   printf("%s,\"%s\",\"%s\"\n", info[argument]["type"], info[argument]["file1_value"], info[argument]["file2_value"]) >> out_csv_path
 	   }
 
 	}
