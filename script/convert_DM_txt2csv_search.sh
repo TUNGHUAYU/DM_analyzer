@@ -18,6 +18,7 @@ if [[ $# != 1 ]];then
 fi
 
 # assign value
+script_workdir=$(dirname $0)
 search_workdir=$1
 pattern="*DM.txt"
 
@@ -25,8 +26,8 @@ pattern="*DM.txt"
 for path in $(find ${search_workdir} -name ${pattern} -type f)
 do
 
-    echo "bash convert_DM_txt2csv.sh ${path}"
-    bash convert_DM_txt2csv.sh ${path} 
+    echo "bash ${script_workdir}/convert_DM_txt2csv.sh $(realpath ${path}) (${path})"
+    bash ${script_workdir}/convert_DM_txt2csv.sh $(realpath ${path}) 
 
 done
 
