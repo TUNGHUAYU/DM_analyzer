@@ -110,10 +110,10 @@ $0 ~ "type:"{
 # component = eRT.com.cisco.spvtg.ccsp.lmlite
 # output
 # return => lmlite
-function extract_component_last_field(component){
-    num = split(component, component_arr, ".")
-    return component_arr[num]
-}
+# function extract_component_last_field(component){
+    # num = split(component, component_arr, ".")
+    # return component_arr[num]
+# }
 
 # the layout of "info" shown below
 # "info"
@@ -137,10 +137,10 @@ END{
     for( component in info ){
 
         # extract component
-        comp = extract_component_last_field(component)
+        # comp = extract_component_last_field(component)
         
         # assign value to variable "csv_path"
-        csv_path = OUT_DIR "/" comp ".csv"    
+        csv_path = OUT_DIR "/" component ".csv"    
         
         # display header
         # printf("%s,%s,%s,%s\n", "No.", "name", "type", "value")		> csv_path 
